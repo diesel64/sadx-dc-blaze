@@ -2,6 +2,8 @@
 #include "SADXModLoader.h"
 #include "hover.h"
 
+// very special thanks to https://github.com/Sora-yx for the code used as a reference here
+
 static const char hoverTimer = 70;
 char hoverTimerGlobal;
 bool hoverUsedGlobal;
