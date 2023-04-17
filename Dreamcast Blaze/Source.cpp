@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "chrmodels.h"
 #include "hover.h"
+#include "tornado.h"
 // or #include "stdafx.h" for previous Visual Studio versions
 
 uint16_t Sonic_UpperArmIndices[] = {
@@ -120,6 +121,9 @@ void __cdecl ProjectVectorZXY(EntityData1* a1, NJS_VECTOR* a2)
 	}
 }
 
+// did we already create flaming footsteps?
+bool madeFire = false;
+
 static void Sonic_Display_r(task* tp)
 {
 	// hook the original display function
@@ -131,32 +135,45 @@ static void Sonic_Display_r(task* tp)
 	playerwk* co2 = (playerwk*)tp->mwp->work.l;
 	auto pwp = (playerwk*)tp->mwp->work.ptr;
 
-	//get player position
+	// get player position
 	NJS_VECTOR pos = twp->pos;
-	//get player forward vector
+	// get player forward vector
 	NJS_VECTOR unit = { 1.0f, 0.0f, 0.0f };
 	ProjectVectorZXY(EntityData1Ptrs[0], &unit);
-	//get player up vector
+	// get player up vector
 	NJS_VECTOR up;
 		up.x = sin(twp->ang.x) * sin(twp->ang.y);
 		up.y = cos(twp->ang.x);
 		up.z = sin(twp->ang.x) * cos(twp->ang.y);
-	//fire position vector
+	// fire position vector
 	NJS_VECTOR a = { pos.x + up.x, pos.y + up.y, pos.z + up.z };
-	//fire velocity vector
+	// fire velocity vector
 	NJS_VECTOR a2a = { 0.0, 0.10, 0.0 };
 	
-	//if on the ground, do fire check
+	// if on the ground, do fire check
 	if (EntityData1Ptrs[0]->Status & (Status_Ground))
 	{
-		//if running or at max speed, continue
-		if (pwp->mj.action == 12 || pwp->mj.action == 13)
+		// if running, create for each footstep
+		if (pwp->mj.action == 12)
 		{
-			//if animation frame has either foot on the ground, create fire particles
+			// if animation frame has either foot on the ground, create fire particles
 			if ((pwp->mj.nframe >= 30 || pwp->mj.nframe <= 1) || (pwp->mj.nframe >= 14 && pwp->mj.nframe <= 16))
 			{
-				CreateFire(&a, &a2a, 0.89999998);
+				if (!madeFire)
+				{
+					CreateFire(&a, &a2a, 0.89999998);
+					//dsPlay_oneshot_v(SE_P_FT3, 0, 0, 0, pos.x, pos.y, pos.z);
+					madeFire = true;
+				}
 			}
+			else {
+				madeFire = false;
+			}
+		}
+		// if at max speed, constantly create fire
+		else if (pwp->mj.action == 13)
+		{
+			CreateFire(&a, &a2a, 0.89999998);
 		}
 	}
 
@@ -208,11 +225,14 @@ static void Sonic_Display_r(task* tp)
 	}
 }
 
+// global reference for helperfunctions
 HelperFunctions HelperFunctionsGlobal;
 
+// replace snowboard texture
 #define ReplacePNG(a) _snprintf_s(pathbuf, LengthOfArray(pathbuf), "%s\\textures\\pvr_common\\index.txt", path); \
         helperFunctions.ReplaceFile("system\\" a ".PVR", pathbuf);
 
+// replace title card textures
 #define ReplacePNG_StageE(a) _snprintf_s(pathbuf, LengthOfArray(pathbuf), "%s\\textures\\pvr_stage_en\\index.txt", path); \
         helperFunctions.ReplaceFile("system\\" a ".PVR", pathbuf);
 
@@ -236,6 +256,7 @@ void PVR_Init(const char* path, const HelperFunctions& helperFunctions)
 	ReplacePNG_StageE("S_STAGE10_E");
 }
 
+// replace the default jump sound with a fiery one
 void Blaze_JumpSound()
 {
 	PlaySound(SE_BOMB2, 0, 0, 0);
@@ -334,57 +355,15 @@ extern "C"
 		//  replace pvr textures
 		PVR_Init(path, helperFunctions);
 
-		// play a different jump sound
+		// play a different jump sound for blaze
 		WriteCall((void*)0x495EAA, Blaze_JumpSound);
 
-		// find a way to disable this:
+		// replace sonic in the tornado stages
+		Tornado_init();
+
+		// find a way to disable this without conflicting with dreamcast conversion:
 		//___SONIC_OBJECTS[56]
 	}
-
-	__declspec(dllexport) void __cdecl OnInitEnd()
-	{
-		// Executed after every mod has been initialized, mainly used to check if a specific mod is also enabled.
-	}
-
-	__declspec(dllexport) void __cdecl OnFrame()
-	{
-		// Executed every running frame of SADX
-	}
-
-	__declspec(dllexport) void __cdecl OnInput()
-	{
-		// Executed before the game processes input
-	}
-
-	__declspec(dllexport) void __cdecl OnControl()
-	{
-		// Executed when the game processes input
-	}
-
-	__declspec(dllexport) void __cdecl OnRenderDeviceReset()
-	{
-		// Executed when the window size changes
-	}
-
-	__declspec(dllexport) void __cdecl OnRenderDeviceLost()
-	{
-		// Executed when the game fails to render the scene
-	}
-
-	__declspec(dllexport) void __cdecl OnRenderSceneStart()
-	{
-		// Executed before the game starts rendering the scene
-	}
-
-	__declspec(dllexport) void __cdecl OnRenderSceneEnd()
-	{
-		// Executed when the game finishes rendering the scene
-	}
-
-	__declspec(dllexport) void __cdecl OnExit()
-	{
-		// Executed when the game is about to terminate
-	}
-
+	
 	__declspec(dllexport) ModInfo SADXModInfo = { ModLoaderVer }; // This is needed for the Mod Loader to recognize the DLL.
 }
