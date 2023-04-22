@@ -162,7 +162,6 @@ static void Sonic_Display_r(task* tp)
 				if (!madeFire)
 				{
 					CreateFire(&a, &a2a, 0.89999998);
-					//dsPlay_oneshot_v(SE_P_FT3, 0, 0, 0, pos.x, pos.y, pos.z);
 					madeFire = true;
 				}
 			}
@@ -190,7 +189,7 @@ static void Sonic_Display_r(task* tp)
 					twp->flag &= ~Status_Attack;
 					twp->flag &= ~Status_Ball;
 					//PlaySound(SE_UNI_FIRE, 0, 0, 0);
-					dsPlay_oneshot_v(SE_UNI_FIRE, 0, 0, 0, pos.x, pos.y, pos.z);
+					dsPlay_oneshot_v(SE_UNI_FIRE, 0, 0, 32, pos.x, pos.y, pos.z);
 				}
 				break;
 			case 110: //don't do anything if currently hovering
@@ -259,7 +258,69 @@ void PVR_Init(const char* path, const HelperFunctions& helperFunctions)
 // replace the default jump sound with a fiery one
 void Blaze_JumpSound()
 {
-	PlaySound(SE_BOMB2, 0, 0, 0);
+	PlaySound(SE_BOMB2, 0, 32, 0);
+}
+
+void burningBlazeScroll()
+{
+	for (int i = 0; i < 27; i++)
+	{
+		uv_8DB372077395BE39B46[i].u += 24; // right wrist
+		switch (i) { // right wrist switch case
+		case 1: case 3: case 5: case 6: case 7: case 10: case 11: case 16: case 17: case 20: case 21: case 22: case 24: case 26:
+			if (uv_8DB372077395BE39B46[i].u > 512) { uv_8DB372077395BE39B46[i].u = 256; }
+			break;
+		default:
+			if (uv_8DB372077395BE39B46[i].u > 256) { uv_8DB372077395BE39B46[i].u = 0; }
+			break;
+		}
+	}
+	for (int i = 0; i < 29; i++)
+	{
+		uv_8DB372074B70C15AB6D[i].u += 24; // left wrist
+		switch (i) { // left wrist switch case
+		case 0: case 2: case 4: case 6: case 8: case 10: case 13: case 15: case 17: case 19: case 21: case 23: case 24: case 26: case 28:
+			if (uv_8DB372074B70C15AB6D[i].u > 512) { uv_8DB372074B70C15AB6D[i].u = 256; }
+			break;
+		default:
+			if (uv_8DB372074B70C15AB6D[i].u > 256) { uv_8DB372074B70C15AB6D[i].u = 0; }
+			break;
+		}
+	}
+	for (int i = 0; i < 29; i++)
+	{
+		uv_8DB37207C2178CC5D96[i].u += 24; // right ankle
+		switch (i) { // right ankle switch case
+		case 1: case 3: case 5: case 7: case 9: case 11: case 13: case 15: case 17: case 19: case 21: case 23: case 25: case 27: case 29:
+			if (uv_8DB37207C2178CC5D96[i].u > 512) { uv_8DB37207C2178CC5D96[i].u = 256; }
+			break;
+		default:
+			if (uv_8DB37207C2178CC5D96[i].u > 256) { uv_8DB37207C2178CC5D96[i].u = 0; }
+			break;
+		}
+	}
+	for (int i = 0; i < 29; i++)
+	{
+		uv_8DB372079D61F441885[i].u += 24; // left ankle
+		switch (i) { // left ankle switch case
+		case 1: case 3: case 5: case 6: case 8: case 10: case 13: case 15: case 17: case 19: case 21: case 23: case 25: case 27: case 29:
+			if (uv_8DB372079D61F441885[i].u > 512) { uv_8DB372079D61F441885[i].u = 256; }
+			break;
+		default:
+			if (uv_8DB372079D61F441885[i].u > 256) { uv_8DB372079D61F441885[i].u = 0; }
+			break;
+		}
+	}
+}
+
+DataArray(NJS_ACTION *, dword_3C5FF94, 0x3C5FF94, 4);
+DataPointer(NJS_ACTION, dword_3C5E884, 0x3C5E884);
+void __cdecl InitBlazeCharSelAnims()
+{
+	dword_3C5FF94[0] = SONIC_ACTIONS[1];
+	dword_3C5FF94[1] = SONIC_ACTIONS[100];
+	dword_3C5FF94[2] = &dword_3C5E884;
+	dword_3C5FF94[3] = 0;
 }
 
 extern "C"
@@ -361,9 +422,57 @@ extern "C"
 		// replace sonic in the tornado stages
 		Tornado_init();
 
+		WriteJump((void*)0x7D24C0, InitBlazeCharSelAnims);
+
 		// find a way to disable this without conflicting with dreamcast conversion:
 		//___SONIC_OBJECTS[56]
 	}
-	
+
+	__declspec(dllexport) void __cdecl OnInitEnd()
+	{
+		// Executed after every mod has been initialized, mainly used to check if a specific mod is also enabled.
+	}
+
+	__declspec(dllexport) void __cdecl OnFrame()
+	{
+		// Executed every running frame of SADX
+		burningBlazeScroll();
+	}
+
+	__declspec(dllexport) void __cdecl OnInput()
+	{
+		// Executed before the game processes input
+	}
+
+	__declspec(dllexport) void __cdecl OnControl()
+	{
+		// Executed when the game processes input
+	}
+
+	__declspec(dllexport) void __cdecl OnRenderDeviceReset()
+	{
+		// Executed when the window size changes
+	}
+
+	__declspec(dllexport) void __cdecl OnRenderDeviceLost()
+	{
+		// Executed when the game fails to render the scene
+	}
+
+	__declspec(dllexport) void __cdecl OnRenderSceneStart()
+	{
+		// Executed before the game starts rendering the scene
+	}
+
+	__declspec(dllexport) void __cdecl OnRenderSceneEnd()
+	{
+		// Executed when the game finishes rendering the scene
+	}
+
+	__declspec(dllexport) void __cdecl OnExit()
+	{
+		// Executed when the game is about to terminate
+	}
+
 	__declspec(dllexport) ModInfo SADXModInfo = { ModLoaderVer }; // This is needed for the Mod Loader to recognize the DLL.
 }
