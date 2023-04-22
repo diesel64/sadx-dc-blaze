@@ -24,10 +24,9 @@ signed int hover_CheckInput(taskwk* data, playerwk* co2)
 	co2->spd.y = 0.0f;
 	hoverTimerGlobal = hoverTimer;
 	hoverUsedGlobal = true;
-	//PlayCustomSound(se_hover);
 	return 1;
 }
-//SE_CH_FIRE
+
 void hover_Physics(taskwk* data, motionwk2* data2, playerwk* co2)
 {
 	PResetAngle(data, data2, co2);
@@ -43,4 +42,12 @@ void hover_Physics(taskwk* data, motionwk2* data2, playerwk* co2)
 	}
 	PSetPosition(data, data2, co2);
 	PResetPosition(data, data2, co2);
+	if ((Controllers[0].LeftStickX == 0) && (Controllers[0].LeftStickY == 0))
+	{
+		if (co2->spd.x > 0)
+			co2->spd.x -= 0.25;
+		if (co2->spd.x < 0)
+			co2->spd.x = 0;
+	}
+	co2->spd.y -= 0.005;
 }
