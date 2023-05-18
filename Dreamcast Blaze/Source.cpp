@@ -124,6 +124,9 @@ void __cdecl ProjectVectorZXY(EntityData1* a1, NJS_VECTOR* a2)
 // did we already create flaming footsteps?
 bool madeFire = false;
 
+// did we already play the falling sound?
+bool playedSound = false;
+
 static void Sonic_Display_r(task* tp)
 {
 	// hook the original display function
@@ -148,11 +151,12 @@ static void Sonic_Display_r(task* tp)
 	// fire position vector
 	NJS_VECTOR a = { pos.x + up.x, pos.y + up.y, pos.z + up.z };
 	// fire velocity vector
-	NJS_VECTOR a2a = { 0.0, 0.10, 0.0 };
+	NJS_VECTOR a2a;
 	
 	// if on the ground, do fire check
 	if (EntityData1Ptrs[0]->Status & (Status_Ground))
 	{
+		a2a = { (0.1f * up.x), (0.1f * up.y), (0.1f * up.z) };
 		// if running, create for each footstep
 		if (pwp->mj.action == 12)
 		{
@@ -176,7 +180,35 @@ static void Sonic_Display_r(task* tp)
 		}
 	}
 
-	// if not in the chao garden, continue (fire sound slot loads chao babbling while in gardens)
+	// might make this customizable at some point if it gets annoying
+	int rngVoiceClip = rand() % 100 + 1;
+	int voiceChance = 100;
+
+	// play falling audio
+	if (co2->mj.action == 18)
+	{
+		if (!playedSound && pwp->mj.nframe >= 55)
+		{
+			if (rngVoiceClip < voiceChance && co2->spd.y < 0)
+			{
+				if (VoiceLanguage && !IsInDeathZone_(EntityData1Ptrs[0]))
+				{
+					PlayVoice(54321);
+				}
+			}
+			playedSound = true;
+		}
+		if (playedSound && pwp->mj.nframe < 40)
+		{
+			pwp->mj.nframe = 40;
+		}
+	}
+	else
+	{
+		playedSound = false;
+	}
+
+	// if not in the chao garden, continue (flamethrower sound slot loads chao babbling while in gardens)
 	if (!IsChaoGarden)
 	{
 		switch (twp->mode)
@@ -204,7 +236,7 @@ static void Sonic_Display_r(task* tp)
 			// set fire position relative to current player forward vector
 			a = { pos.x + unit.x * -4, pos.y+5, pos.z + unit.z * -4 };
 			// set velocity
-			a2a.y = -1.5;
+			a2a = { 0, -1.5, 0 };
 			// perform hover physics
 			hover_Physics(twp, mwp, co2);
 			// create fire particles
@@ -399,9 +431,6 @@ extern "C"
 		// disable shoe morphs
 		WriteData<1>((void*)0x493500, 0xC3);
 
-		// set aura color
-		WriteCall(reinterpret_cast<void*>(0x4A1705), SetLSDColor);
-
 		// disable sonic face motion
 		WriteData<1>((int*)0x493730, 0xC3);
 
@@ -422,7 +451,35 @@ extern "C"
 		// replace sonic in the tornado stages
 		Tornado_init();
 
+		// update character select animations
 		WriteJump((void*)0x7D24C0, InitBlazeCharSelAnims);
+
+		// cream support
+		HMODULE CreamDC = GetModuleHandle(L"CreamtheRabbit(SA1-Style)");
+		if (CreamDC)
+		{
+			helperFunctions.ReplaceFile("system\\sounddata\\voice_us\\wma\\64871.wma", "system\\sounddata\\voice_us\\wma\\64871b.wma");
+			helperFunctions.ReplaceFile("system\\sounddata\\voice_us\\wma\\0493.wma", "system\\sounddata\\voice_us\\wma\\0493b.wma");
+			helperFunctions.ReplaceFile("system\\sounddata\\voice_us\\wma\\0494.wma", "system\\sounddata\\voice_us\\wma\\0494b.wma");
+			helperFunctions.ReplaceFile("system\\sounddata\\voice_us\\wma\\0496.wma", "system\\sounddata\\voice_us\\wma\\0496b.wma");
+		}
+
+		// female tails support if you're into that sort of thing i guess otherwise there wouldn't be like two separate mods for it
+		HMODULE FemTails = GetModuleHandle(L"FemaleTails");
+		if (FemTails)
+		{
+			helperFunctions.ReplaceFile("system\\sounddata\\voice_us\\wma\\0496.wma", "system\\sounddata\\voice_us\\wma\\0496b.wma");
+		}
+
+		// set aura color
+		WriteCall((void*)0x4A1705, SetLSDColor);
+
+		// resize sonic's texlist, fixes initialization with testspawn.
+		SONIC_TEXLIST.nbTexture = 31;
+		// replace textures
+		helperFunctions.ReplaceFile("system\\SONIC.pvm", "system\\BLAZE_DC.pvm");
+		helperFunctions.ReplaceFile("system\\SUPERSONIC.pvm", "system\\BURNINGBLAZE_DC.pvm");
+		helperFunctions.ReplaceFile("system\\SON_EFF.pvm", "system\\BLZ_EFF_DC.pvm");
 
 		// find a way to disable this without conflicting with dreamcast conversion:
 		//___SONIC_OBJECTS[56]
