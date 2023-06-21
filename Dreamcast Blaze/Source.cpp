@@ -2,43 +2,49 @@
 #include "chrmodels.h"
 #include "hover.h"
 #include "tornado.h"
+#include "IniFile.hpp"
+#pragma warning(disable : 4996)
 // or #include "stdafx.h" for previous Visual Studio versions
 
+// this file is very unstructured and messy and could probably be split up but it's cool i guess at least it works
+
+// global reference for helperfunctions
+HelperFunctions HelperFunctionsGlobal;
+
+// how often to play the "woah!" voice clip when falling
+int voiceChance;
+
+// wowow i wonder what these could be for???
 uint16_t Sonic_UpperArmIndices[] = {
 	0, 2,
 	1, 3,
 	4, 6,
 	5, 7,
 };
-
 uint16_t Sonic_LowerArmIndices[] = {
 	0, 2,
 	1, 3,
 	4, 6,
 	5, 7,
 };
-
 uint16_t Sonic_LowerArmIndices_Ring[] = {
 	0, 10,
 	1, 11,
 	4, 14,
 	5, 15,
 };
-
 uint16_t Sonic_UpperLegIndices[] = {
 	0, 2,
 	1, 3,
 	4, 6,
 	5, 7,
 };
-
 uint16_t Sonic_LowerLegIndices[] = {
 	0, 2,
 	1, 3,
 	4, 6,
 	5, 7,
 };
-
 uint16_t Sonic_ShoeIndices[] = {
 	2, 3,
 	12, 8,
@@ -47,7 +53,6 @@ uint16_t Sonic_ShoeIndices[] = {
 	17, 13,
 	3, 2,
 };
-
 uint16_t Sonic_HandIndices[] = {
 	4, 15,
 	0, 14,
@@ -61,6 +66,68 @@ static void __cdecl SetLSDColor()
 	// #FF32A852 would translate to SetMaterialAndSpriteColor(1.0f, 0.19f, 0.65f, 0.32f);
 	// To get a float color (range 0-1): 32 in hexadecimal is 50, divided by 255 it gives us 0.19.
 	SetMaterial(0.8f, 1.0f, 0.42f, 0.42f);
+}
+
+// overwriting PlayEggmanVoice does nothing, so this is fine i guess - duplicate of vanilla with an extra check
+void __cdecl PlayVoice_New(int a1)
+{
+	// say "she" instead of "he", but only as blaze since tails uses the same eggman audio
+	if (GetCurrentCharacterID() == Characters_Sonic)
+	{
+		if (a1 == 176 || a1 == 1420)
+			a1 = 65109;
+	}
+	if (VoicesEnabled)
+	{
+		CurrentVoiceNumber = a1;
+	}
+}
+
+// duplicate of vanilla - dreamcast conversion's fixed version cause a crash when the spindash ball aura thing is disabled
+void __cdecl sub_4A0E70(ObjectMaster* a1)
+{
+	EntityData1* v1; // esi
+	Angle v2; // eax
+	Angle v3; // eax
+	Float x; // [esp+0h] [ebp-20h]
+	Float y; // [esp+4h] [ebp-1Ch]
+	Float z; // [esp+8h] [ebp-18h]
+	NJS_ARGB a1a; // [esp+10h] [ebp-10h] BYREF
+
+	v1 = a1->Data1;
+	BackupConstantAttr();
+	AddConstantAttr((NJD_FLAG)0, NJD_FLAG_IGNORE_LIGHT | NJD_FLAG_USE_ALPHA);
+	a1a.b = 0.0;
+	a1a.g = 0.0;
+	a1a.r = 0.0;
+	a1a.a = (double)(unsigned __int16)v1->InvulnerableTime * -1.0 * 0.2;
+	SetMaterialAndSpriteColor(&a1a);
+	njSetTexture((NJS_TEXLIST*)v1->LoopData);
+	njPushMatrix(0);
+	z = v1->Scale.z + v1->Position.z;
+	y = v1->Scale.y + v1->Position.y;
+	x = v1->Scale.x + v1->Position.x;
+	njTranslate(0, x, y, z);
+	v2 = v1->Rotation.z;
+	if (v2)
+	{
+		njRotateZ(0, (unsigned __int16)v2);
+	}
+	v3 = v1->Rotation.x;
+	if (v3)
+	{
+		njRotateX(0, (unsigned __int16)v3);
+	}
+	if (v1->Rotation.y)
+	{
+		njRotateY(0, (unsigned __int16)-LOWORD(v1->Rotation.y));
+	}
+	DrawQueueDepthBias = 1000.0;
+	ProcessModelNode_A_WrapperB(SONIC_OBJECTS[56], QueuedModelFlagsB_SomeTextureThing);
+	DrawQueueDepthBias = 0.0;
+	njPopMatrix(1u);
+	ClampGlobalColorThing_Thing();
+	RestoreConstantAttr();
 }
 
 // vectors for disabling the spindash deformations
@@ -80,11 +147,11 @@ static void __cdecl SetSDScale()
 	njScaleV(0, scaleVector);
 }
 
+// self explanatory
 FunctionHook<void> InitSonicWeldInfo_h(0x7D0B50);
-
 FunctionHook<void, task*> Sonic_Display_h(0x4948C0);
 
-// copied from the disassembly because i couldn't find it in any of the provided header files
+// copied from the disassembly because i couldn't find it in any of the provided header files :D
 void __cdecl ProjectVectorZXY(EntityData1* a1, NJS_VECTOR* a2)
 {
 	Angle v2; // eax
@@ -127,6 +194,7 @@ bool madeFire = false;
 // did we already play the falling sound?
 bool playedSound = false;
 
+// display hook for actions and stuff
 static void Sonic_Display_r(task* tp)
 {
 	// hook the original display function
@@ -180,9 +248,7 @@ static void Sonic_Display_r(task* tp)
 		}
 	}
 
-	// might make this customizable at some point if it gets annoying
 	int rngVoiceClip = rand() % 100 + 1;
-	int voiceChance = 100;
 
 	// play falling audio
 	if (co2->mj.action == 18)
@@ -256,9 +322,6 @@ static void Sonic_Display_r(task* tp)
 	}
 }
 
-// global reference for helperfunctions
-HelperFunctions HelperFunctionsGlobal;
-
 // replace snowboard texture
 #define ReplacePNG(a) _snprintf_s(pathbuf, LengthOfArray(pathbuf), "%s\\textures\\pvr_common\\index.txt", path); \
         helperFunctions.ReplaceFile("system\\" a ".PVR", pathbuf);
@@ -267,6 +330,7 @@ HelperFunctions HelperFunctionsGlobal;
 #define ReplacePNG_StageE(a) _snprintf_s(pathbuf, LengthOfArray(pathbuf), "%s\\textures\\pvr_stage_en\\index.txt", path); \
         helperFunctions.ReplaceFile("system\\" a ".PVR", pathbuf);
 
+// replace the pvr textures
 void PVR_Init(const char* path, const HelperFunctions& helperFunctions)
 {
 	char pathbuf[MAX_PATH];
@@ -293,6 +357,7 @@ void Blaze_JumpSound()
 	PlaySound(SE_BOMB2, 0, 32, 0);
 }
 
+// burning blaze's scrolling textures
 void burningBlazeScroll()
 {
 	for (int i = 0; i < 27; i++)
@@ -345,6 +410,7 @@ void burningBlazeScroll()
 	}
 }
 
+// used to change the animations used on the character select
 DataArray(NJS_ACTION *, dword_3C5FF94, 0x3C5FF94, 4);
 DataPointer(NJS_ACTION, dword_3C5E884, 0x3C5E884);
 void __cdecl InitBlazeCharSelAnims()
@@ -368,7 +434,7 @@ extern "C"
 		SonicWeldInfo[id].anonymous_5 = 0;
 		SonicWeldInfo[id].VertexBuffer = 0;
 	}
-	
+
 	void __cdecl InitNPCSonicWeldInfo_r()
 	{
 		memcpy(NPCSonicWeldInfo, SonicWeldInfo, sizeof(WeldInfo) * 15);
@@ -421,6 +487,12 @@ extern "C"
 
 		HelperFunctionsGlobal = helperFunctions;
 
+		// read the config file (didn't want one but realized some people might not like hearing "woah!" whenever they fall for more than like 2 seconds)
+		const IniFile* config = new IniFile(std::string(path) + "\\config.ini");
+
+		// set the falling voice clip chance
+		voiceChance = config->getInt("", "voiceChance", 100);
+
 		// replace sonic model
 		WriteBlazeModel();
 
@@ -431,13 +503,17 @@ extern "C"
 		// disable shoe morphs
 		WriteData<1>((void*)0x493500, 0xC3);
 
-		// disable sonic face motion
+		// disable sonic face motion (temporary - working on the cutscene head)
 		WriteData<1>((int*)0x493730, 0xC3);
 
 		// disable spin dash deformation
 		WriteCall((void*)0x494A88, SetSDPos);
 		WriteCall((void*)0x494A94, SetSDRot);
 		WriteCall((void*)0x494AB7, SetSDScale);
+
+		// disable spin dash aura ball
+		SONIC_OBJECTS[56]->basicdxmodel = NULL;
+		WriteJump((void*)0x004A0E70, sub_4A0E70);
 
 		// blaze's actions! (not sure why i hooked the display to do this but it works)
 		Sonic_Display_h.Hook(Sonic_Display_r);
@@ -454,45 +530,55 @@ extern "C"
 		// update character select animations
 		WriteJump((void*)0x7D24C0, InitBlazeCharSelAnims);
 
+		// set light speed aura color (does nothing with the dreamcast conversion enabled haha)
+		WriteCall((void*)0x4A1705, SetLSDColor);
+
+		// make eggman refer to the player as female only when playing as blaze
+		WriteJump((void*)0x425710, PlayVoice_New);
+		
+		// resize blaze's texlist because for some reason the chao from the cream mod use blaze's fireball textures (just kidding this does nothing???)
+		SONIC_TEXLIST.nbTexture = 31;
+
+		// replace textures
+		helperFunctions.ReplaceFile("system\\SONIC.pvm", "system\\BLAZE_DC.pvm");
+		helperFunctions.ReplaceFile("system\\SUPERSONIC.pvm", "system\\BURNINGBLAZE_DC.pvm");
+		helperFunctions.ReplaceFile("system\\SON_EFF.pvm", "system\\BLZ_EFF_DC.pvm");
+
+		// close the config file
+		delete config;
+	}
+
+	__declspec(dllexport) void __cdecl OnInitEnd()
+	{
+		// Executed after every mod has been initialized, mainly used to check if a specific mod is also enabled.
+
 		// cream support
 		HMODULE CreamDC = GetModuleHandle(L"CreamtheRabbit(SA1-Style)");
 		if (CreamDC)
 		{
-			helperFunctions.ReplaceFile("system\\sounddata\\voice_us\\wma\\64871.wma", "system\\sounddata\\voice_us\\wma\\64871b.wma");
-			helperFunctions.ReplaceFile("system\\sounddata\\voice_us\\wma\\0493.wma", "system\\sounddata\\voice_us\\wma\\0493b.wma");
-			helperFunctions.ReplaceFile("system\\sounddata\\voice_us\\wma\\0494.wma", "system\\sounddata\\voice_us\\wma\\0494b.wma");
-			helperFunctions.ReplaceFile("system\\sounddata\\voice_us\\wma\\0496.wma", "system\\sounddata\\voice_us\\wma\\0496b.wma");
+			HelperFunctionsGlobal.ReplaceFile("system\\sounddata\\voice_us\\wma\\64871.wma", "system\\sounddata\\voice_us\\wma\\64871b.wma");
+			HelperFunctionsGlobal.ReplaceFile("system\\sounddata\\voice_us\\wma\\0493.wma", "system\\sounddata\\voice_us\\wma\\0493b.wma");
+			HelperFunctionsGlobal.ReplaceFile("system\\sounddata\\voice_us\\wma\\0494.wma", "system\\sounddata\\voice_us\\wma\\0494b.wma");
+			HelperFunctionsGlobal.ReplaceFile("system\\sounddata\\voice_us\\wma\\0496.wma", "system\\sounddata\\voice_us\\wma\\0496b.wma");
+			// replace "he's not gonna get away with this" entirely since cream is also a girl
+			HelperFunctionsGlobal.ReplaceFile("system\\sounddata\\voice_us\\wma\\0176.wma", "system\\sounddata\\voice_us\\wma\\65109.wma");
 		}
 
 		// female tails support if you're into that sort of thing i guess otherwise there wouldn't be like two separate mods for it
 		HMODULE FemTails = GetModuleHandle(L"FemaleTails");
 		if (FemTails)
 		{
-			helperFunctions.ReplaceFile("system\\sounddata\\voice_us\\wma\\0496.wma", "system\\sounddata\\voice_us\\wma\\0496b.wma");
+			HelperFunctionsGlobal.ReplaceFile("system\\sounddata\\voice_us\\wma\\0496.wma", "system\\sounddata\\voice_us\\wma\\0496b.wma");
+			// replace "he's not gonna get away with this" entirely since tails is now a girl (good for her)
+			HelperFunctionsGlobal.ReplaceFile("system\\sounddata\\voice_us\\wma\\0176.wma", "system\\sounddata\\voice_us\\wma\\65109.wma");
 		}
-
-		// set aura color
-		WriteCall((void*)0x4A1705, SetLSDColor);
-
-		// resize sonic's texlist, fixes initialization with testspawn.
-		SONIC_TEXLIST.nbTexture = 31;
-		// replace textures
-		helperFunctions.ReplaceFile("system\\SONIC.pvm", "system\\BLAZE_DC.pvm");
-		helperFunctions.ReplaceFile("system\\SUPERSONIC.pvm", "system\\BURNINGBLAZE_DC.pvm");
-		helperFunctions.ReplaceFile("system\\SON_EFF.pvm", "system\\BLZ_EFF_DC.pvm");
-
-		// find a way to disable this without conflicting with dreamcast conversion:
-		//___SONIC_OBJECTS[56]
-	}
-
-	__declspec(dllexport) void __cdecl OnInitEnd()
-	{
-		// Executed after every mod has been initialized, mainly used to check if a specific mod is also enabled.
 	}
 
 	__declspec(dllexport) void __cdecl OnFrame()
 	{
 		// Executed every running frame of SADX
+
+		// scrolling textures for burning blaze
 		burningBlazeScroll();
 	}
 
