@@ -1,0 +1,2 @@
+6243767,hyoji_zanki_ss.png,32x32
+6544685,1upsuper.png,32x32
