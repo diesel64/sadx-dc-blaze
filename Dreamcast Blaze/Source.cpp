@@ -68,11 +68,74 @@ static void __cdecl SetLSDColor()
 	SetMaterial(0.8f, 1.0f, 0.42f, 0.42f);
 }
 
+// dreamcast conversion light dash override
+void Sonic_DisplayLightDashModelX(taskwk* data1, motionwk** mwp, playerwk* pwp)
+{
+	// Don't render the Light Speed Dash model in Super Sonic mode - for compatibility with the Super Sonic mod.
+	if (pwp->equipment & Upgrades_SuperSonic)
+		return;
+	NJS_ACTION action;
+	NJS_ARGB color;
+	float timer;
+	float basedepth = 8000.0f;
+	if (ssStageNumber == LevelIDs_SpeedHighway && ssActNumber == 2)
+		basedepth = 1000.0f;
+	if (ssStageNumber == LevelIDs_StationSquare && ssActNumber == 3)
+		basedepth = 1000.0f;
+	if (!loop_count)
+	{
+		// Main stuff
+		unsigned short reqaction = pwp->mj.reqaction;
+		action.object = SONIC_OBJECTS[54];
+		if (pwp->mj.mtnmode == 2)
+			action.motion = pwp->mj.actwkptr->motion;
+		else
+			action.motion = pwp->mj.plactptr[reqaction].actptr->motion;
+
+		timer = (float)(gu32LocalCnt & 0x7F);
+		if (timer >= 64.0f)
+			timer = 128.0f - timer;
+		float v6x = timer * 0.015625f;
+		float v5x = v6x * 0.18f;
+		color.r = 1;
+		color.g = 0.28f - v5x;
+		color.b = 0;
+		color.a = 0;
+		// Render
+		njControl3D(NJD_CONTROL_3D_OFFSET_MATERIAL);
+		njColorBlendingMode(NJD_SOURCE_COLOR, NJD_COLOR_BLENDING_ONE);
+		njColorBlendingMode(NJD_DESTINATION_COLOR, NJD_COLOR_BLENDING_ONE);
+		njPushMatrixEx();
+		// Main
+		___njSetConstantMaterial(&color);
+		late_z_ofs___ = basedepth;
+		late_ActionEx(&action, pwp->mj.nframe, LATE_WZ);
+		// Outer 1
+		njScale(0, 1.05f, 1.05f, 1.05f);
+		color.r = 0.05f;
+		color.g -= 0.15f;
+		___njSetConstantMaterial(&color);
+		late_z_ofs___ = basedepth + 300.0f;
+		late_ActionEx(&action, pwp->mj.nframe, LATE_WZ);
+		// Outer 2
+		color.r = 0.3f;
+		color.g -= 0.05f;
+		njScale(0, 1.05f, 1.05f, 1.05f);
+		___njSetConstantMaterial(&color);
+		late_z_ofs___ = basedepth + 600.0f;
+		late_ActionEx(&action, pwp->mj.nframe, LATE_WZ);
+		njColorBlendingMode(NJD_SOURCE_COLOR, NJD_COLOR_BLENDING_SRCALPHA);
+		njColorBlendingMode(NJD_DESTINATION_COLOR, NJD_COLOR_BLENDING_INVSRCALPHA);
+		njPopMatrixEx();
+		late_z_ofs___ = 0;
+	}
+}
+
 // overwriting PlayEggmanVoice does nothing, so this is fine i guess - duplicate of vanilla with an extra check
 void __cdecl PlayVoice_New(int a1)
 {
-	// say "she" instead of "he", but only as blaze since tails uses the same eggman audio
-	if (GetCurrentCharacterID() == Characters_Sonic)
+	// say "she" instead of "he", but only as blaze or amy since tails uses the same eggman audio
+	if (GetCurrentCharacterID() == Characters_Sonic || GetCurrentCharacterID() == Characters_Amy)
 	{
 		if (a1 == 176 || a1 == 1420)
 			a1 = 65109;
@@ -147,6 +210,36 @@ static void __cdecl SetSDScale()
 	njScaleV(0, scaleVector);
 }
 
+// eye texture stuff
+static void __cdecl Update_Eyes()
+{
+	// left
+	object_005698F0.basicdxmodel->mats[0].attrflags = 0x9729A400;
+	object_005698F0.basicdxmodel->mats[0].attr_texId = 32;
+	// right
+	object_00569CE8.basicdxmodel->mats[0].attrflags = 0x9729A400;
+	object_00569CE8.basicdxmodel->mats[0].attr_texId = 32;
+	// left super
+	object_0062C828.basicdxmodel->mats[0].attrflags = 0x9729A400;
+	// right super
+	object_0062CC20.basicdxmodel->mats[0].attrflags = 0x9729A400;
+}
+static void __cdecl Reset_Eyes()
+{
+
+	// left
+	object_005698F0.basicdxmodel->mats[0].attrflags = 0x9429A400;
+	object_005698F0.basicdxmodel->mats[0].attr_texId = 6;
+	// right
+	object_00569CE8.basicdxmodel->mats[0].attrflags = 0x9429A400;
+	object_00569CE8.basicdxmodel->mats[0].attr_texId = 6;
+	// left super
+	object_0062C828.basicdxmodel->mats[0].attrflags = 0x9429A400;
+	// right super
+	object_0062CC20.basicdxmodel->mats[0].attrflags = 0x9429A400;
+}
+
+
 // self explanatory
 FunctionHook<void> InitSonicWeldInfo_h(0x7D0B50);
 FunctionHook<void, task*> Sonic_Display_h(0x4948C0);
@@ -213,14 +306,14 @@ static void Sonic_Display_r(task* tp)
 	ProjectVectorZXY(EntityData1Ptrs[0], &unit);
 	// get player up vector
 	NJS_VECTOR up;
-		up.x = sin(twp->ang.x) * sin(twp->ang.y);
-		up.y = cos(twp->ang.x);
-		up.z = sin(twp->ang.x) * cos(twp->ang.y);
+	up.x = sin(twp->ang.x) * sin(twp->ang.y);
+	up.y = cos(twp->ang.x);
+	up.z = sin(twp->ang.x) * cos(twp->ang.y);
 	// fire position vector
 	NJS_VECTOR a = { pos.x + up.x, pos.y + up.y, pos.z + up.z };
 	// fire velocity vector
 	NJS_VECTOR a2a;
-	
+
 	// if on the ground, do fire check
 	if (EntityData1Ptrs[0]->Status & (Status_Ground))
 	{
@@ -279,28 +372,28 @@ static void Sonic_Display_r(task* tp)
 	{
 		switch (twp->mode)
 		{
-			case 8:
-			case 9:
-			case 12: // check for hover input if jumping, launched, or falling
-				if (hover_CheckInput(twp, pwp))
-				{
-					twp->flag &= ~Status_Attack;
-					twp->flag &= ~Status_Ball;
-					//PlaySound(SE_UNI_FIRE, 0, 0, 0);
-					dsPlay_oneshot_v(SE_UNI_FIRE, 0, 0, 32, pos.x, pos.y, pos.z);
-				}
-				break;
-			case 110: //don't do anything if currently hovering
-				break;
-			default: // reset hover usage if doing anything else
-				hoverUsedGlobal = false;
-				break;
+		case 8:
+		case 9:
+		case 12: // check for hover input if jumping, launched, or falling
+			if (hover_CheckInput(twp, pwp))
+			{
+				twp->flag &= ~Status_Attack;
+				twp->flag &= ~Status_Ball;
+				//PlaySound(SE_UNI_FIRE, 0, 0, 0);
+				dsPlay_oneshot_v(SE_UNI_FIRE, 0, 0, 32, pos.x, pos.y, pos.z);
+			}
+			break;
+		case 110: //don't do anything if currently hovering
+			break;
+		default: // reset hover usage if doing anything else
+			hoverUsedGlobal = false;
+			break;
 		}
 		// if in the hover action, continue
 		if (twp->mode == 110)
 		{
 			// set fire position relative to current player forward vector
-			a = { pos.x + unit.x * -4, pos.y+5, pos.z + unit.z * -4 };
+			a = { pos.x + unit.x * -4, pos.y + 5, pos.z + unit.z * -4 };
 			// set velocity
 			a2a = { 0, -1.5, 0 };
 			// perform hover physics
@@ -319,6 +412,51 @@ static void Sonic_Display_r(task* tp)
 				dsStop_num(SE_UNI_FIRE); // stop fire sound
 			}
 		}
+	}
+	
+	// glowing eyes at night - like big (because cat)
+	switch (ssStageNumber)
+	{
+	case LevelIDs_Casinopolis:
+		if (ssActNumber == 1)
+		{
+			Update_Eyes();
+		}
+		else
+		{
+			Reset_Eyes();
+		}
+		break;
+	case LevelIDs_SpeedHighway:
+		if (ssActNumber < 2)
+		{
+			Update_Eyes();
+		}
+		else
+		{
+			Reset_Eyes();
+		}
+		break;
+	case LevelIDs_FinalEgg:
+		Update_Eyes();
+		break;
+	case LevelIDs_StationSquare:
+	case LevelIDs_MysticRuins:
+	case LevelIDs_MRGarden:
+	case LevelIDs_EggCarrierOutside:
+	case LevelIDs_ECGarden:
+		if (GetTimeOfDay() == TimesOfDay_Night)
+		{
+			Update_Eyes();
+		}
+		else
+		{
+			Reset_Eyes();
+		}
+		break;
+	default:
+		Reset_Eyes();
+		break;
 	}
 }
 
@@ -411,7 +549,7 @@ void burningBlazeScroll()
 }
 
 // used to change the animations used on the character select
-DataArray(NJS_ACTION *, dword_3C5FF94, 0x3C5FF94, 4);
+DataArray(NJS_ACTION*, dword_3C5FF94, 0x3C5FF94, 4);
 DataPointer(NJS_ACTION, dword_3C5E884, 0x3C5E884);
 void __cdecl InitBlazeCharSelAnims()
 {
@@ -445,7 +583,7 @@ extern "C"
 	{
 		// Call original to allow the game to initialize Metal Sonic welds.
 		InitSonicWeldInfo_h.Original();
-		
+
 		//Blaze
 		SetSonicWeldInfo(0, 0, 1, 2, arrayptrandlength(Sonic_UpperArmIndices));
 		SetSonicWeldInfo(1, 0, 2, 3, arrayptrandlength(Sonic_LowerArmIndices));
@@ -531,11 +669,14 @@ extern "C"
 		WriteJump((void*)0x7D24C0, InitBlazeCharSelAnims);
 
 		// set light speed aura color (does nothing with the dreamcast conversion enabled haha)
-		WriteCall((void*)0x4A1705, SetLSDColor);
+		//WriteCall((void*)0x4A1705, SetLSDColor);
+
+		// override dreamcast conversion aura
+		WriteCall((void*)0x494B27, Sonic_DisplayLightDashModelX);
 
 		// make eggman refer to the player as female only when playing as blaze
 		WriteJump((void*)0x425710, PlayVoice_New);
-		
+
 		// resize blaze's texlist because for some reason the chao from the cream mod use blaze's fireball textures (just kidding this does nothing???)
 		SONIC_TEXLIST.nbTexture = 31;
 
