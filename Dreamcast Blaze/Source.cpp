@@ -629,7 +629,7 @@ extern "C"
 		const IniFile* config = new IniFile(std::string(path) + "\\config.ini");
 
 		// set the falling voice clip chance
-		voiceChance = config->getInt("", "voiceChance", 100);
+		voiceChance = config->getInt("Misc", "voiceChance", 100);
 
 		// replace sonic model
 		WriteBlazeModel();
