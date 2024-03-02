@@ -14,6 +14,19 @@ HelperFunctions HelperFunctionsGlobal;
 // how often to play the "woah!" voice clip when falling
 int voiceChance;
 
+// button used for hovering
+Buttons hoverButton = Buttons_C;
+
+// possible buttons
+static const Buttons buttonsList[] {
+	Buttons_B,
+	Buttons_X,
+	Buttons_Y,
+	Buttons_C,
+	Buttons_D,
+	Buttons_Z
+};
+
 // wowow i wonder what these could be for???
 uint16_t Sonic_UpperArmIndices[] = {
 	0, 2,
@@ -401,7 +414,7 @@ static void Sonic_Display_r(task* tp)
 			// create fire particles
 			CreateFire(&a, &a2a, 0.89999998);
 			// if timer is nonzero and the hover button is held, decrement the timer
-			if ((hoverTimerGlobal > 0) && ((ButtonBits_Y & Controllers[0].HeldButtons) != 0) && !(EntityData1Ptrs[0]->Status & (Status_Ground)))
+			if ((hoverTimerGlobal > 0) && (HeldButtons[TWP_PNUM(twp)] & hoverButton) && !(EntityData1Ptrs[0]->Status & (Status_Ground)))
 			{
 				hoverTimerGlobal--;
 			}
@@ -630,6 +643,9 @@ extern "C"
 
 		// set the falling voice clip chance
 		voiceChance = config->getInt("Misc", "voiceChance", 100);
+
+		// set the button to use for hovering
+		hoverButton = buttonsList[config->getInt("Misc", "hoverButton", 3)];
 
 		// replace sonic model
 		WriteBlazeModel();
