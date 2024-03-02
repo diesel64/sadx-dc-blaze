@@ -14,7 +14,7 @@ FunctionPointer(void, PResetPosition, (taskwk* a1, motionwk2* a2, playerwk* a3),
 
 signed int hover_CheckInput(taskwk* data, playerwk* co2)
 {
-	if ((ButtonBits_Y & Controllers[0].PressedButtons) == 0 || hoverUsedGlobal)
+	if (!(PressedButtons[TWP_PNUM(data)] & hoverButton) || hoverUsedGlobal)
 	{
 		return 0;
 	}
