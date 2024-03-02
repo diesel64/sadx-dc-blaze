@@ -1,10 +1,23 @@
 <?xml version="1.0"?>
 <ConfigSchema xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns="http://www.sonicretro.org">
 	<Groups>
-		<Group name="Misc" display="Miscellaneous Settings">
+		<Group name="Misc" display="General Settings">
+			<Property name="hoverButton" type="Buttons" defaultvalue="3" display="Hover Button">
+				<HelpText>The button used for hovering. (Default: C)</HelpText>
+			</Property>
 			<Property name="voiceChance" display="Audible Acrophobia" type="int" defaultvalue="100">
 				<HelpText>Probability for the "Woah!" voice clip to play when falling. (1 - 100)</HelpText>
 			</Property>
 		</Group>
 	</Groups>
+	<Enums>
+		<Enum name="Buttons">
+			<EnumMember name="0" display="B" />
+			<EnumMember name="1" display="X" />
+			<EnumMember name="2" display="Y" />
+			<EnumMember name="3" display="C" />
+			<EnumMember name="4" display="D" />
+			<EnumMember name="5" display="Z" />
+		</Enum>
+	</Enums>
 </ConfigSchema>
